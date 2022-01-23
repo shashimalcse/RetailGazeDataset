@@ -136,7 +136,7 @@ class RetailGaze(Dataset):
 
 
             if self.training == 'test':
-                return img, face, head_channel, eye, gaze_heatmap, gaze, gaze_inside, image_path
+                return img, face, head_channel, [eye_x, eye_y], gaze_heatmap, gaze, gaze_inside, image_path
             else:
                 return img, face, head_channel, gaze_heatmap, image_path, gaze_inside
 

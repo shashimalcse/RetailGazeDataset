@@ -27,17 +27,17 @@ def parse_GooPickle(images_dir, pickle_path):
 
         for i in range(num_data):
 
-            box = np.asarray(data[i]['ann']['bboxes'][-1,:]).astype(np.float)
+            # box = np.asarray(data[i]['ann']['bboxes'][-1,:]).astype(np.float)
             #print(float(data[i]['gaze_cx']))
             point = np.array([data[i]['gaze_cx'],data[i]['gaze_cy']]).astype(np.float)
-            hbox = np.copy(data['ann']['hbox'])
+            hbox = np.copy(data[i]['ann']['hbox'])
             x_min, y_min, x_max, y_max = hbox
             head_x=((x_min+x_max)/2)/640
             head_y=((y_min+y_max)/2)/480
             eye = np.array([head_x, head_y])
 
             #normalize
-            box = box / [640, 480, 640, 480]
+            box = hbox / [640, 480, 640, 480]
             point = point / [640, 480]
             eye = eye / [640, 480]
             full_path = images_dir + data[i]['filename'].replace('\\', '/')
@@ -116,7 +116,7 @@ def getCropped(img, e):
         print('corruption')
         return img
 
-class RetailGazeDataset(Dataset):
+class RetailGaze(Dataset):
 
     def __init__(self, images_path, pickle_path, type):
 
@@ -177,17 +177,17 @@ class RetailGazeDataset(Dataset):
 
         ######DO DATA AUG HERE###########
 
-        if self.type == 'train':
+        # if self.type == 'train':
 
-            composed = transforms.Compose([RandomHorizontalFlip(), RandomVerticalFlip(), RandomCrop()])
-            sample = {'img': img, 'bbox': bbox, 'eyes': eyes, 'eyes_bbox': eyes_bbox, 'gaze': gaze}
-            sample = composed(sample)
+        #     composed = transforms.Compose([RandomHorizontalFlip(), RandomVerticalFlip(), RandomCrop()])
+        #     sample = {'img': img, 'bbox': bbox, 'eyes': eyes, 'eyes_bbox': eyes_bbox, 'gaze': gaze}
+        #     sample = composed(sample)
 
-            img = sample['img']
-            bbox = sample['bbox']
-            eyes = sample['eyes']
-            eyes_bbox = sample['eyes_bbox']
-            gaze = sample['gaze']
+        #     img = sample['img']
+        #     bbox = sample['bbox']
+        #     eyes = sample['eyes']
+        #     eyes_bbox = sample['eyes_bbox']
+        #     gaze = sample['gaze']
 
         #SHIFTED GRIDS STUFF
 
