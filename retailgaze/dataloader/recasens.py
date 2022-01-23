@@ -30,7 +30,11 @@ def parse_GooPickle(images_dir, pickle_path):
             box = np.asarray(data[i]['ann']['bboxes'][-1,:]).astype(np.float)
             #print(float(data[i]['gaze_cx']))
             point = np.array([data[i]['gaze_cx'],data[i]['gaze_cy']]).astype(np.float)
-            eye = np.array([data[i]['hx'],data[i]['hy']]).astype(np.float)
+            hbox = np.copy(data['ann']['hbox'])
+            x_min, y_min, x_max, y_max = hbox
+            head_x=((x_min+x_max)/2)/640
+            head_y=((y_min+y_max)/2)/480
+            eye = np.array([head_x, head_y])
 
             #normalize
             box = box / [640, 480, 640, 480]
@@ -111,6 +115,145 @@ def getCropped(img, e):
         # print('ends')
         print('corruption')
         return img
+
+class RetailGazeDataset(Dataset):
+
+    def __init__(self, images_path, pickle_path, type):
+
+        data_bbox, data_gaze, data_eyes, data_path = parse_GooPickle(images_path, pickle_path)
+
+        self.bbox_list = data_bbox
+        self.gaze_list = data_gaze
+        self.eyes_list = data_eyes
+        self.img_path_list = data_path
+        self.type = type
+
+    def __len__(self):
+        len_images = len(self.img_path_list)
+
+        return  len_images
+
+    def __getitem__(self, idx):
+
+        img_name = self.img_path_list[idx]
+        img = io.imread(img_name)
+        try:
+            img = color.rgba2rgb(img)
+        except:
+            pass
+
+        s = img.shape
+        #print('img_orig_shape: ', s)
+        bbox_corr = self.bbox_list[idx]
+        bbox_corr[bbox_corr < 0] = 0.0
+        bbox = np.copy(img[ int(bbox_corr[1] * s[0]): int(np.ceil( bbox_corr[1] * s[0] + bbox_corr[3] * s[0])), int(bbox_corr[0] * s[1]): int(np.ceil(bbox_corr[0] * s[1] + bbox_corr[2] * s[1]))])
+
+        bbox = np.ascontiguousarray(bbox)
+        bbox = transform.resize(bbox,(227, 227))
+
+        img = np.ascontiguousarray(img)
+        img = transform.resize(img,(227, 227))
+        #print('after resize: ',img.shape)
+
+        gaze = self.gaze_list[idx]
+
+        eyes = self.eyes_list[idx]
+        eyes_bbox = (eyes - bbox_corr[:2])/bbox_corr[2:]
+
+        if len(img.shape) == 2:
+            #print('stacking')
+            img = np.stack((img,)*3, axis=-1)
+
+        if len(bbox.shape) == 2:
+            #print('stacking bbox')
+            bbox = np.stack((bbox,) * 3, axis=-1)
+
+        bbox = getCropped(bbox, eyes_bbox)
+        bbox = np.ascontiguousarray(bbox)
+        bbox = transform.resize(bbox,(227, 227))
+
+        eyes_loc_size = 13
+        gaze_label_size = 5
+
+        ######DO DATA AUG HERE###########
+
+        if self.type == 'train':
+
+            composed = transforms.Compose([RandomHorizontalFlip(), RandomVerticalFlip(), RandomCrop()])
+            sample = {'img': img, 'bbox': bbox, 'eyes': eyes, 'eyes_bbox': eyes_bbox, 'gaze': gaze}
+            sample = composed(sample)
+
+            img = sample['img']
+            bbox = sample['bbox']
+            eyes = sample['eyes']
+            eyes_bbox = sample['eyes_bbox']
+            gaze = sample['gaze']
+
+        #SHIFTED GRIDS STUFF
+
+        eyes_loc = np.zeros((eyes_loc_size, eyes_loc_size))
+        eyes_loc[int(np.floor(eyes_loc_size * eyes[1]))][int(np.floor(eyes_loc_size * eyes[0]))] = 1
+
+        grid_size = 5
+
+        v_x = [0, 1, -1, 0, 0]
+        v_y = [0, 0, 0, -1, 1]
+
+        x_pix = gaze[0]
+        y_pix = gaze[1]
+
+        shifted_grids = np.zeros((grid_size, gaze_label_size, gaze_label_size))
+        for i in range(5):
+
+            x_grid = int(np.floor( gaze_label_size * gaze[0] + (v_x[i] * (1/ (grid_size * 3.0))) ) )
+            y_grid = int(np.floor( gaze_label_size * gaze[1] + (v_y[i] * (1/ (grid_size * 3.0))) ) )
+
+            if x_grid < 0:
+                x_grid = 0
+            elif x_grid > 4:
+                x_grid = 4
+            if y_grid < 0:
+                y_grid = 0
+            elif y_grid > 4:
+                y_grid = 4
+
+            try:
+                shifted_grids[i][y_grid][x_grid] = 1
+            except:
+                print("**************")
+                print("eyes: ", eyes)
+                print("eyes_bbox: ", eyes_bbox)
+                print("gaze: ", gaze)
+                print("grid vals: ", x_grid, y_grid)
+                plt.imshow(img)
+                plt.savefig('a.jpg')
+                exit()
+
+        eyes_loc = torch.from_numpy(eyes_loc).contiguous()
+        shifted_grids = torch.from_numpy(shifted_grids).contiguous()
+
+        shifted_grids = shifted_grids.view(1, 5, 25)
+        gaze_final = np.ones(100)
+        gaze_final *= -1
+        gaze_final[:gaze.shape[0]] = gaze
+
+        img = img.transpose((2, 0, 1))
+        img = torch.from_numpy(img.copy()).contiguous()
+
+        bbox = bbox.transpose((2, 0, 1))
+        bbox = torch.from_numpy(bbox.copy()).contiguous()
+
+        normtransform = transforms.Compose([
+				transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+			])
+
+        #print(img.shape)
+        img = normtransform(img.float())
+        bbox = normtransform(bbox.float())
+
+        sample = (img.float(), bbox.float(), eyes_loc.float(), shifted_grids.float(), eyes, idx, eyes_bbox, gaze_final)
+
+        return sample
 
 class GooDataset(Dataset):
 
