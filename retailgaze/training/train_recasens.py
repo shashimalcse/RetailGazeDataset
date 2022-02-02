@@ -9,7 +9,7 @@ import utils
 import sys
 from sklearn.metrics import roc_auc_score
 import numpy as np
-
+import csv
 from tqdm import tqdm
 import cv2
 
@@ -86,7 +86,7 @@ criterion = nn.NLLLoss().cuda()
 
 def train(net, train_dataloader, optimizer, epoch, logger):
     net.train()
-    
+    n_total_steps = len(train_dataloader)
     running_loss = []
     for i, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
 
@@ -115,7 +115,9 @@ def train(net, train_dataloader, optimizer, epoch, logger):
         if i % 100 == 99:
             logger.info('%s'%(str(np.mean(running_loss))))
             running_loss = [] 
-            
+        with open ('training_loss.csv', 'a') as f:
+            writer_csv = csv.writer(f)
+            writer_csv.writerow([epoch*n_total_steps + i, str(np.mean(running_loss))])    
 class GazeOptimizer():
     
     def __init__(self, net, initial_lr, weight_decay=1e-6):

@@ -17,7 +17,7 @@ import numpy as np
 # from tensorboardX import SummaryWriter
 import warnings
 from tqdm import tqdm
-
+import csv
 import cv2
 from sklearn.metrics import roc_auc_score
 
@@ -85,7 +85,7 @@ def train(net, train_dataloader, optimizer, epoch, logger):
 
     # print("Training in progress ...")
     running_loss = []
-
+    n_total_steps = len(train_dataloader)
     net.train(True)
     for i, (img, face, head_channel, gaze_heatmap, name, gaze_inside) in tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
         images = img.cuda()
@@ -118,7 +118,9 @@ def train(net, train_dataloader, optimizer, epoch, logger):
         if i % 100 == 99:
             logger.info('%s'%(str(np.mean(running_loss, axis=0))))
             running_loss = []
-
+        with open ('training_loss.csv', 'a') as f:
+            writer_csv = csv.writer(f)
+            writer_csv.writerow([epoch*n_total_steps + i, str(np.mean(running_loss))])
     return running_loss
         # step += 1
 
