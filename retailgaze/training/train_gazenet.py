@@ -5,7 +5,7 @@ from torch.autograd import Variable
 import numpy as np
 import cv2
 from sklearn.metrics import roc_auc_score
-
+import csv
 from tqdm import tqdm
 
 def F_loss(direction, predict_heatmap, eye_position, gt_position, gt_heatmap):
@@ -61,7 +61,7 @@ class GazeOptimizer():
         return self.optimizer
 
 def train(net, train_dataloader, optimizer, epoch, logger):
-
+    n_total_steps = len(train_dataloader)
     running_loss = []
     for i, data in tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
         image, face_image, gaze_field, eye_position, gt_position, gt_heatmap = \
@@ -88,9 +88,12 @@ def train(net, train_dataloader, optimizer, epoch, logger):
 
         running_loss.append([heatmap_loss.item(),
                              m_angle_loss.item(), loss.item()])
-        if i % 100 == 99:
+        if i % 10 == 0:
             logger.info('%s'%(str(np.mean(running_loss, axis=0))))
-            running_loss = []
+            with open ('training_loss.csv', 'a') as f:
+                writer_csv = csv.writer(f)
+                writer_csv.writerow([epoch*n_total_steps + i, str(np.mean(running_loss, axis=0))])
+            running_loss = []    
 
     return running_loss
     

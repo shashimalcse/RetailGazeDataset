@@ -114,10 +114,11 @@ def train(net, train_dataloader, optimizer, epoch, logger):
         running_loss.append(total_loss.item())
         if i % 100 == 99:
             logger.info('%s'%(str(np.mean(running_loss))))
+            with open ('training_loss.csv', 'a') as f:
+                writer_csv = csv.writer(f)
+                writer_csv.writerow([epoch*n_total_steps + i, str(np.mean(running_loss))])    
             running_loss = [] 
-        with open ('training_loss.csv', 'a') as f:
-            writer_csv = csv.writer(f)
-            writer_csv.writerow([epoch*n_total_steps + i, str(np.mean(running_loss))])    
+
 class GazeOptimizer():
     
     def __init__(self, net, initial_lr, weight_decay=1e-6):
