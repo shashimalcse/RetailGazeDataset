@@ -185,8 +185,8 @@ class RetailGaze (Dataset):
                     'gt_heatmap': torch.FloatTensor(heatmap).unsqueeze(0),
                     'gt_bboxes': gt_bboxes,
                     'gt_labels': gt_labels,
-                    'gaze_idx' : None,
-                    'gaze_class' : None,
+                    'gaze_idx' : 1,
+                    'gaze_class' : 1,
                     'image_path': image_path}
 
         return sample

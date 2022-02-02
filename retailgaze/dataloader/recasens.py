@@ -39,7 +39,6 @@ def parse_GooPickle(images_dir, pickle_path):
             #normalize
             box = hbox / [640, 480, 640, 480]
             point = point / [640, 480]
-            eye = eye / [640, 480]
             full_path = images_dir + data[i]['filename'].replace('\\', '/')
 
 
