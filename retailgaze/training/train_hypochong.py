@@ -67,16 +67,16 @@ class GazeOptimizer():
         return self.optimizer
 
 
-def train(net, train_dataloader, val_data_loader,optimizer, epoch, logger,num_epochs=5,patience=10):
+def train(net, train_dataloader, val_data_loader,optimizer, logger,num_epochs=5,patience=10):
     # Loss functions
     mse_loss = nn.MSELoss(reduce=False) # not reducing in order to ignore outside cases
     bcelogit_loss = nn.BCEWithLogitsLoss()
     early_stopping = EarlyStopping(patience=patience, verbose=True)
     # step = 0
-    loss_amp_factor = 10000 # multiplied to the loss to prevent underflow
+    loss_amp_factor = 1000 # multiplied to the loss to prevent underflow
     # max_steps = len(train_loader)
     optimizer.zero_grad() 
-    for epoch in epoch:
+    for epoch in range(num_epochs):
 
 
     # print("Training in progress ...")
@@ -123,7 +123,7 @@ def train(net, train_dataloader, val_data_loader,optimizer, epoch, logger,num_ep
 
         # Validation
         net.eval()
-        for i, (img, face, head_channel,object_channel, gaze_heatmap, name, gaze_inside) in tqdm(enumerate(train_dataloader), total=len(train_dataloader)):
+        for i, (img, face, head_channel,object_channel, gaze_heatmap, name, gaze_inside) in tqdm(enumerate(val_data_loader), total=len(train_dataloader)):
             images = img.cuda()
             head = head_channel.cuda()
             faces = face.cuda()
@@ -253,6 +253,10 @@ def test(net, test_data_loader, logger, save_output=False):
                 heatmap = cv2.resize(heatmap, (5, 5))
                 gt_heatmap = np.zeros((5, 5))
                 x, y = list(map(int, gt_point * 5))
+                if y==5:
+                    y=4
+                if x==5:
+                    x=4  
                 gt_heatmap[y, x] = 1.0
 
                 all_gazepoints.append(f_point)
