@@ -383,8 +383,11 @@ def test(model, test_data_loader, logger, save_output=False):
     all_predmap = []
 
     with torch.no_grad():
-        for img, face, head_channel, object_channel,gaze_final,eye,gaze_idx,gt_bboxes,gt_labels in test_data_loader:
-
+        for img, face, head_channel, object_channel,gaze_final,eye,gt_bboxes,gt_labels in test_data_loader:
+            img = img.cuda()
+            head_channel =  head_channel.cuda()
+            face = face.cuda()
+            object_channel = object_channel.cuda()
             outputs, raw_hm = model.raw_hm(img,face,head_channel,object_channel)
             final_output = raw_hm.cpu().data.numpy()
             pred_labels = outputs.max(1)[1] #max function returns both values and indices. so max()[0] is values, max()[1] is indices
@@ -392,8 +395,33 @@ def test(model, test_data_loader, logger, save_output=False):
             for i in range(inputs_size):           
                 distval, f_point = euclid_dist(pred_labels.data.cpu()[i], gaze_final[i])
                 ang_error = calc_ang_err(pred_labels.data.cpu()[i], gaze_final[i], eye[i])
+                #auc_score = cal_auc(ground_labels[i], raw_hm[i, :, :])
                 predmap, gtmap = cal_auc(gaze_final[i], raw_hm[i, :, :])
-       
+                # bbox_data = select_nearest_bbox(f_point, gt_bboxes[:-1,i,:])
+                # nearest_bbox = bbox_data['index']
+                # min_id = 0
+                # min_dist = np.NINF
+                # for k,b in enumerate(bbox_data['box']):
+                #     b = b * [640, 480, 640, 480]
+                #     b = b.astype(int)
+                #     contour = np.array([ [b[0],b[1]],[b[0],b[3]],[b[2],b[3]],[b[2],b[1]]])
+                #     dist= cv2.pointPolygonTest(contour,(f_point[0]*640,f_point[1]*480),True)
+                #     if min_dist<dist:
+                #         min_dist = dist
+                #         min_id = k
+                # if(gaze_idx[i]==nearest_bbox[0]):
+                #     all_auc.append(1)
+                # else:
+                #     all_auc.append(0)
+                # if(gaze_idx[i]==nearest_bbox[min_id]):
+                #     all_auc2.append(1)
+                # else:
+                #     all_auc2.append(0)
+                # gt_label = gt_labels[gaze_idx[i],i]
+                # if(gt_label == gt_labels[nearest_bbox[0],i]):
+                #     all_label.append(1)
+                # else:
+                #     all_label.append(0)        
                 all_gazepoints.append(f_point)
                 all_predmap.append(predmap)
                 all_gtmap.append(gtmap)
@@ -408,7 +436,9 @@ def test(model, test_data_loader, logger, save_output=False):
         all_predmap = np.stack(all_predmap).reshape([-1])
         all_gtmap = np.stack(all_gtmap).reshape([-1])
         auc = roc_auc_score(all_gtmap, all_predmap)
-
+        # box_auc = (sum(all_auc)/len(all_auc))*100
+        # box_auc2 = (sum(all_auc2)/len(all_auc2))*100
+        # label_auc = (sum(all_label)/len(all_label))*100
         
     if save_output:
         np.savez('predictions.npz', gazepoints=all_gazepoints)

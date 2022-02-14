@@ -112,7 +112,7 @@ def train(net, train_dataloader, optimizer, epoch, logger):
         inputs_size = xh.size(0)
         
         running_loss.append(total_loss.item())
-        if i % 100 == 99:
+        if i % 10 == 0:
             logger.info('%s'%(str(np.mean(running_loss))))
             with open ('training_loss.csv', 'a') as f:
                 writer_csv = csv.writer(f)
