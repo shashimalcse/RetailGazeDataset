@@ -107,7 +107,7 @@ class GazeStatic(nn.Module):
 class Shashimal6(nn.Module):
     def __init__(self):
         super(Shashimal6,self).__init__()
-        self.compress_conv1 = nn.Conv2d(2049, 1024, kernel_size=1, stride=1, padding=0, bias=False)
+        self.compress_conv1 = nn.Conv2d(2051, 1024, kernel_size=1, stride=1, padding=0, bias=False)
         self.compress_bn1 = nn.BatchNorm2d(1024)
         self.compress_conv2 = nn.Conv2d(1024, 512, kernel_size=1, stride=1, padding=0, bias=False)
         self.compress_bn2 = nn.BatchNorm2d(512)
@@ -133,7 +133,7 @@ class Shashimal6(nn.Module):
         self.face_net = Shashimal6_Face3D()
         statedict = torch.load("/content/drive/MyDrive/shashimal6_face_51.pt")
         self.face_net.cuda()
-        self.face_net.load_state_dict(statedict["state_dict"],strict=False)
+        self.face_net.load_state_dict(statedict["state_dict"])
         self.sigmoid = nn.Sigmoid()    
         self.linear = nn.Linear(1,1)
         self.linear.weight.data.fill_(1)
@@ -144,12 +144,11 @@ class Shashimal6(nn.Module):
         self.face_net.eval()
         with torch.no_grad():
             gaze,depth= self.face_net(image,face)
-            object_channel = torch.mul(depth,object_channel)
-            # fd_range = torch.zeros(image.shape[0],1).cuda()
-            # head_depth = torch.zeros(image.shape[0],1).cuda()
-            # for batch in range(image.shape[0]):
-            #     fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/24
-            #     head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
+        #     fd_range = torch.zeros(image.shape[0],1).cuda()
+        #     head_depth = torch.zeros(image.shape[0],1).cuda()
+        #     for batch in range(image.shape[0]):
+        #         fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/24
+        #         head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
         #     point_depth = torch.zeros(image.shape[0],1).cuda()
         # for batch in range(image.shape[0]):
         #     point_depth[batch,:] = head_depth[batch] + gaze[batch,2]*224   
@@ -173,13 +172,11 @@ class Shashimal6(nn.Module):
         # x_0 = torch.mul(fd_0,mask)
         # x_1 = torch.mul(fd_1,mask)
         # x_2 = torch.mul(fd_2,mask)
-        # depth_mask = torch.mul(mask,object_channel)
-        # print(depth_mask.shape)
-        # # depth_mask_1 = torch.mul(x_1,object_channel)
-        # # depth_mask_2 = torch.mul(x_2,object_channel)
-        # # depth_mask = torch.cat([depth_mask_0,depth_mask_1,depth_mask_2], dim=1)   
+        # depth_mask_0 = torch.mul(x_0,object_channel)
+        # depth_mask_1 = torch.mul(x_1,object_channel)
+        # depth_mask_2 = torch.mul(x_2,object_channel)
+        # depth_mask = torch.cat([depth_mask_0,depth_mask_1,depth_mask_2], dim=1)   
         # scene = self.scene_net(image)
-        # print(scene.shape)
         # reduce_depth_mask = self.maxpool(self.maxpool(self.maxpool(self.maxpool(self.maxpool(depth_mask)))))
         # scene_depth_feat = torch.cat([scene,reduce_depth_mask],1)
         # encoding = self.compress_conv1(scene_depth_feat)
@@ -519,9 +516,7 @@ def test_face3d(model, test_data_loader, logger, save_output=False):
         angle_error = np.mean(np.array(angle_error),axis=0)
     print(angle_error)   
 
-
 def save_tensor(model,train_data_loader,validation_data_loader,test_data_loader):
-
     model.eval()
     for i, (img, face, head_channel,object_channel,head,image_path) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
         image =  img.cuda()
@@ -562,7 +557,6 @@ def save_tensor(model,train_data_loader,validation_data_loader,test_data_loader)
             path[-1] = path[-1].split('.')[0]
             path = "".join(path[-3:])
             torch.save(heatmap[batch],'/content/drive/MyDrive/RetailGaze/masks/{}'.format(path))
-
 
 
 class Shashimal6_New(nn.Module):
@@ -746,7 +740,7 @@ def test_new_iou(model,test_data_loader,logger):
     model.eval()
     all_iou = []
     with torch.no_grad():
-        for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,heatmap,mask,gt_bboxes,gt_labels,gaze_idx) in tqdm(enumerate(test_data_loader), total=len(test_data_loader)):
+        for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap,mask,gt_bboxes,gt_labels,gaze_idx) in tqdm(enumerate(test_data_loader), total=len(test_data_loader)):
             img =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
