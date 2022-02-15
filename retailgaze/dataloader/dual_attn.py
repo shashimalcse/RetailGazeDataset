@@ -40,6 +40,12 @@ def _get_transform(input_resolution):
     transform_list.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
     return transforms.Compose(transform_list)
 
+def _get_transform2():
+    transform_list = []
+    transform_list.append(transforms.Resize((448, 448)))
+    transform_list.append(transforms.ToTensor())
+    transform_list.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+    return transforms.Compose(transform_list)
 
 class RetailGaze(Dataset):
         def __init__(self, root_dir, mat_file, training='train', include_path=False, input_size=224, output_size=64, imshow = False, use_gtbox=False):
@@ -52,6 +58,7 @@ class RetailGaze(Dataset):
             self.output_size = output_size
             self.imshow = imshow
             self.transform = _get_transform(input_size)
+            self.transform2 = _get_transform2()
             self.use_gtbox= use_gtbox
 
             with open(mat_file, 'rb') as f:
@@ -125,7 +132,7 @@ class RetailGaze(Dataset):
 
             if self.transform is not None:
                 img = self.transform(img)
-                face = self.transform(face)
+                face = self.transform2(face)
 
             # generate the heat map used for deconv prediction
             gaze_heatmap = torch.zeros(self.output_size, self.output_size)  # set the size of the output
@@ -142,8 +149,8 @@ class RetailGaze(Dataset):
 
 
             if self.training == 'test':
-                return img, face, head_channel,object_channel, [eye_x, eye_y]
+                return img, face, head_channel,object_channel, torch.from_numpy(eye), image_path
             else:
-                return img, face, head_channel,object_channel, [eye_x, eye_y]
+                return img, face, head_channel,object_channel, torch.from_numpy(eye), image_path
 
 
