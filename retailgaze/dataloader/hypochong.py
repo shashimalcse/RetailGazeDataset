@@ -307,7 +307,7 @@ class GooDataset(Dataset):
                 img = TF.adjust_contrast(img, contrast_factor=np.random.uniform(0.5, 1.5))
                 img = TF.adjust_saturation(img, saturation_factor=np.random.uniform(0, 1.5))
         # print('bbx2',  [x_min, y_min, x_max, y_max])
-
+        object_channel = chong_imutils.get_object_box_channel(gt_bboxes[:-1],width,height,resolution=self.input_size).unsqueeze(0)
         head_channel = chong_imutils.get_head_box_channel(x_min, y_min, x_max, y_max, width, height,
                                                     resolution=self.input_size, coordconv=False).unsqueeze(0)
 
@@ -335,13 +335,10 @@ class GooDataset(Dataset):
                                                  3,
                                                  type='Gaussian')
 
-        if self.training == 'test' and self.use_gtbox:
-            return img, face, head_channel, eye, gaze_heatmap, gaze, gaze_inside, image_path, gtbox
-        elif self.training == 'test':
-            return img, face, head_channel, eye, gaze_heatmap, gaze, gaze_inside, image_path
+        if self.training == 'test':
+            return img, face, head_channel,object_channel, [eye_x, eye_y], gaze_heatmap, gaze, gaze_inside, image_path
         else:
-            return img, face, head_channel, gaze_heatmap, image_path, gaze_inside
-
+            return img, face, head_channel,object_channel, gaze_heatmap, image_path, gaze_inside
 
 class GazeDataset(Dataset):
     def __init__(self, root_dir, mat_file, training='train', input_size=224, output_size=64,  include_path=False, imshow = False):
