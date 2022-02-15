@@ -750,37 +750,37 @@ def test_new_iou(model,test_data_loader,logger):
     all_iou = []
     with torch.no_grad():
         for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,heatmap,mask,gt_bboxes,gt_labels,gaze_idx) in tqdm(enumerate(test_data_loader), total=len(test_data_loader)):
-        img =  img.cuda()
-        face = face.cuda()
-        object_channel = object_channel.cuda()
-        head_channel = head_channel.cuda()
-        head_point = head.cuda()
-        mask = mask.cuda()
-        gaze_heatmap = gaze_heatmap.cuda()
-        heatmap = model(img,face,object_channel,head_point,mask)
-        heatmap = heatmap.squeeze(1) 
-        heatmap = heatmap.cpu().data.numpy()
-        gaze_heatmap = gaze_heatmap.cpu().data.numpy()
-        gt_label = gt_label.cpu().data.numpy()
-        head = head.cpu().data.numpy()
-        for batch in range(img.shape[0]):
-            output = heatmap[batch]
-            max_id = -1
-            max_iou = 0
-            for k, b in enumerate(gt_bboxes[0]):
-                b = b * [64, 64, 64, 64]
-                b = b.astype(int)
-                iou = np.sum(output[b[1]:b[3],b[0]:b[2]])
-                if iou > max_iou:
-                    max_iou = iou
-                    max_id = k
-            # nearest box by box_iou
-            if max_id == -1:
-                all_iou.append(0)
-            elif (gaze_idx[batch] == max_id):
-                all_iou.append(1)
-            else:
-                all_iou.append(0)
+            img =  img.cuda()
+            face = face.cuda()
+            object_channel = object_channel.cuda()
+            head_channel = head_channel.cuda()
+            head_point = head.cuda()
+            mask = mask.cuda()
+            gaze_heatmap = gaze_heatmap.cuda()
+            heatmap = model(img,face,object_channel,head_point,mask)
+            heatmap = heatmap.squeeze(1) 
+            heatmap = heatmap.cpu().data.numpy()
+            gaze_heatmap = gaze_heatmap.cpu().data.numpy()
+            gt_label = gt_label.cpu().data.numpy()
+            head = head.cpu().data.numpy()
+            for batch in range(img.shape[0]):
+                output = heatmap[batch]
+                max_id = -1
+                max_iou = 0
+                for k, b in enumerate(gt_bboxes[0]):
+                    b = b * [64, 64, 64, 64]
+                    b = b.astype(int)
+                    iou = np.sum(output[b[1]:b[3],b[0]:b[2]])
+                    if iou > max_iou:
+                        max_iou = iou
+                        max_id = k
+                # nearest box by box_iou
+                if max_id == -1:
+                    all_iou.append(0)
+                elif (gaze_idx[batch] == max_id):
+                    all_iou.append(1)
+                else:
+                    all_iou.append(0)
 
         iou_auc = (sum(all_iou) / len(all_iou)) * 100
         print (iou_auc)
