@@ -161,6 +161,7 @@ class Shashimal6(nn.Module):
         #     fd_2[batch,:,:,:] = torch.where((point_depth[batch]-3*fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+3*fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
         xy = gaze[:,:2]
         xy = xy.float()
+        head_point = head_point.float()
         mask = torch.zeros(image.shape[0],1,224,224).cuda()
         for batch in range(image.shape[0]):
             for i in range(224):
