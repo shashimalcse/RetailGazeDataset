@@ -160,11 +160,13 @@ class Shashimal6(nn.Module):
         #     fd_1[batch,:,:,:] = torch.where((point_depth[batch]-2*fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+2*fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
         #     fd_2[batch,:,:,:] = torch.where((point_depth[batch]-3*fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+3*fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
         xy = gaze[:,:2]
+        xy = xy.float()
         mask = torch.zeros(image.shape[0],1,224,224).cuda()
         for batch in range(image.shape[0]):
             for i in range(224):
                 for k in range(224):
                     arr = torch.tensor([k,i],dtype=torch.float32).cuda() - head_point[batch,:]
+                    arr = arr.float()
                     mask[batch,:,i,k] = torch.dot(arr,xy[batch,:])/(torch.norm(arr,p=2)*torch.norm(xy[batch,:],p=2))
         mask = torch.arccos(mask)
         mask = torch.maximum(1-(12*mask/np.pi),torch.tensor(0))
