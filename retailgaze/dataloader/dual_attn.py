@@ -92,8 +92,8 @@ class RetailGaze(Dataset):
                 gt_labels = np.copy(data['ann']['labels'])
             hbox = np.copy(data['ann']['hbox'])
             x_min, y_min, x_max, y_max = hbox
-            head_x=((x_min+x_max)/2)/640
-            head_y=((y_min+y_max)/2)/480
+            head_x=((x_min+x_max)/2)
+            head_y=((y_min+y_max)/2)
             eye = np.array([head_x, head_y])
             eye_x, eye_y = eye
             k = 0.1
