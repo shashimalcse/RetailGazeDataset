@@ -109,6 +109,7 @@ class RetailGaze(Dataset):
             fov_path[-1] = fov_path[-1].split('.')[0]
             fov_path = "".join(fov_path[-3:])
             fov = torch.load("/content/drive/MyDrive/RetailGaze/masks/"+fov_path)
+            head_for_mask = (int((head_x/640)*224), int((head_y/480)*224))
             if self.imshow:
                 img.save("img_aug.jpg")
                 face.save('face_aug.jpg')

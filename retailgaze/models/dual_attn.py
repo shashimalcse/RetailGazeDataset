@@ -521,11 +521,11 @@ def test_face3d(model, test_data_loader, logger, save_output=False):
 
 def save_tensor(model,train_data_loader,validation_data_loader,test_data_loader):
     model.eval()
-    for i, (img, face, head_channel,object_channel,head,image_path) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
+    for i, (img, face, head_channel,object_channel,fov,eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
         image =  img.cuda()
         face = face.cuda()
         object_channel = object_channel.cuda()
-        head_point = head.cuda()
+        head_point = head_for_mask.cuda()
         heatmap = model(image,face,object_channel,head_channel,head_point)
         heatmap = heatmap.cpu()
         for batch in range(img.shape[0]):
@@ -534,11 +534,11 @@ def save_tensor(model,train_data_loader,validation_data_loader,test_data_loader)
             path[-1] = path[-1].split('.')[0]
             path = "".join(path[-3:])
             torch.save(heatmap[batch],'/content/drive/MyDrive/RetailGaze/masks/{}'.format(path))
-    for i, (img, face, head_channel,object_channel,head,image_path) in tqdm(enumerate(validation_data_loader), total=len(validation_data_loader)) :
+    for i, (img, face, head_channel,object_channel,fov,eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(validation_data_loader), total=len(validation_data_loader)) :
         image =  img.cuda()
         face = face.cuda()
         object_channel = object_channel.cuda()
-        head_point = head.cuda()
+        head_point = head_for_mask.cuda()
         heatmap = model(image,face,object_channel,head_channel,head_point)  
         heatmap = heatmap.cpu()
         for batch in range(img.shape[0]):
@@ -547,11 +547,11 @@ def save_tensor(model,train_data_loader,validation_data_loader,test_data_loader)
             path[-1] = path[-1].split('.')[0]
             path = "".join(path[-3:])
             torch.save(heatmap[batch],'/content/drive/MyDrive/RetailGaze/masks/{}'.format(path))
-    for i, (img, face, head_channel,object_channel,head,image_path) in tqdm(enumerate(test_data_loader), total=len(test_data_loader)) :
+    for i, (img, face, head_channel,object_channel,fov,eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(test_data_loader), total=len(test_data_loader)) :
         image =  img.cuda()
         face = face.cuda()
         object_channel = object_channel.cuda()
-        head_point = head.cuda()
+        head_point = head_for_mask.cuda()
         heatmap = model(image,face,object_channel,head_channel,head_point)         
         heatmap = heatmap.cpu()
         for batch in range(img.shape[0]):
