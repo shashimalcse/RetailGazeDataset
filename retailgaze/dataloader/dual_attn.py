@@ -95,27 +95,6 @@ class RetailGaze(Dataset):
             head_x=((x_min+x_max)/2)
             head_y=((y_min+y_max)/2)
             eye = np.array([head_x, head_y])
-            eye_x, eye_y = eye
-            k = 0.1
-            x_min = (eye_x - 0.15) * width
-            y_min = (eye_y - 0.15) * height
-            x_max = (eye_x + 0.15) * width
-            y_max = (eye_y + 0.15) * height
-            if x_min < 0:
-                x_min = 0
-            if y_min < 0:
-                y_min = 0
-            if x_max < 0:
-                x_max = 0
-            if y_max < 0:
-                y_max = 0
-            x_min -= k * abs(x_max - x_min)
-            y_min -= k * abs(y_max - y_min)
-            x_max += k * abs(x_max - x_min)
-            y_max += k * abs(y_max - y_min)
-            x_min, y_min, x_max, y_max = map(float, [x_min, y_min, x_max, y_max])
-            gt_label = np.array([gaze_x, gaze_y])
-            head_box = np.array([x_min/640, y_min/480, x_max/640, y_max/480])
             head_channel = chong_imutils.get_head_box_channel(x_min, y_min, x_max, y_max, width, height,
                                                     resolution=self.input_size, coordconv=False).unsqueeze(0)
 
