@@ -589,7 +589,7 @@ class Shashimal6_New(nn.Module):
         self.scene_net = torch.nn.Sequential(*(list(resnet.children())[:-3]))
         self.depth = torch.hub.load("intel-isl/MiDaS", "DPT_Hybrid")
         self.face_net = Shashimal6_Face3D()
-        statedict = torch.load("/home/shashimal/Downloads/shashimal6_face_43.pt")
+        statedict = torch.load("/content/drive/MyDrive/shashimal6_face_51.pt")
         self.face_net.cuda()
         self.face_net.load_state_dict(statedict["state_dict"])
         self.sigmoid = nn.Sigmoid()    
