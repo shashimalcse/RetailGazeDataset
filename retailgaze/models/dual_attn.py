@@ -659,14 +659,14 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
 
         running_loss = []
         validation_loss = []
-        for i, (img, face, location_channel,object_channel,head_channel,head,gt_label,gaze_heatmap,mask) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
+        for i, (img, face, head_channel,object_channel,fov,eye,gaze_heatmap, image_path) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
             image =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
-            head_point = head.cuda()
-            mask = mask.cuda()
+            head_point = eye.cuda()
+            fov = fov.cuda()
             gaze_heatmap = gaze_heatmap.cuda()
-            heatmap = model(image,face,object_channel,head_point,mask)
+            heatmap = model(image,face,object_channel,head_point,fov)
             heatmap = heatmap.squeeze(1)
             loss = mse_loss(heatmap,gaze_heatmap)
             loss = torch.mean(loss, dim=1)
@@ -681,14 +681,14 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
                 writer.add_scalar('training_loss',np.mean(running_loss),epoch*n_total_steps+i)
                 running_loss = [] 
         model.eval() 
-        for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap,mask) in tqdm(enumerate(validation_data_loader), total=len(train_data_loader)) :
+        for i, (img, face, head_channel,object_channel,fov,eye,gaze_heatmap, image_path) in tqdm(enumerate(validation_data_loader), total=len(train_data_loader)) :
             image =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
-            head_point = head.cuda()
-            mask = mask.cuda()
+            head_point = eye.cuda()
+            fov = fov.cuda()
             gaze_heatmap = gaze_heatmap.cuda().to(torch.float)
-            heatmap = model(image,face,object_channel,head_point,mask)
+            heatmap = model(image,face,object_channel,head_point,fov)
             heatmap = heatmap.squeeze(1)
             loss = mse_loss(heatmap,gaze_heatmap)
             loss = torch.mean(loss, dim=1)

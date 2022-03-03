@@ -126,6 +126,10 @@ class RetailGaze(Dataset):
             mask = cv2.resize(mask, (224,224), interpolation = cv2.INTER_AREA)
             mask_tensor = image_to_tensor(mask)
             object_channel = mask_tensor/255.0
+            fov_path = image_path.split('/')
+            fov_path[-1] = fov_path[-1].split('.')[0]
+            fov_path = "".join(fov_path[-3:])
+            fov = torch.load("/content/drive/MyDrive/RetailGaze/masks/"+mask_path)
             if self.imshow:
                 img.save("img_aug.jpg")
                 face.save('face_aug.jpg')
@@ -149,8 +153,8 @@ class RetailGaze(Dataset):
 
 
             if self.training == 'test':
-                return img, face, head_channel,object_channel, torch.from_numpy(eye), image_path
+                return img, face, head_channel,object_channel,fov, torch.from_numpy(eye),gaze_heatmap, image_path
             else:
-                return img, face, head_channel,object_channel, torch.from_numpy(eye), image_path
+                return img, face, head_channel,object_channel,fov,torch.from_numpy(eye),gaze_heatmap, image_path
 
 
