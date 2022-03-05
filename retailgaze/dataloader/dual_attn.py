@@ -109,7 +109,7 @@ class RetailGaze(Dataset):
             fov_path[-1] = fov_path[-1].split('.')[0]
             fov_path = "".join(fov_path[-3:])
             fov = torch.load("/content/drive/MyDrive/RetailGaze/masks/"+fov_path)
-            head_for_mask = (int((head_x/640)*224), int((head_y/480)*224))
+            head_for_mask = np.array([int((head_x/640)*224), int((head_y/480)*224)])
             if self.imshow:
                 img.save("img_aug.jpg")
                 face.save('face_aug.jpg')
@@ -133,8 +133,8 @@ class RetailGaze(Dataset):
 
 
             if self.training == 'test':
-                return img, face, head_channel,object_channel,fov, torch.from_numpy(eye),gaze_heatmap, image_path
+                return img, face, head_channel,object_channel,fov, torch.from_numpy(eye),torch.from_numpy(head_for_mask),gaze_heatmap, image_path
             else:
-                return img, face, head_channel,object_channel,fov,torch.from_numpy(eye),gaze_heatmap, image_path
+                return img, face, head_channel,object_channel,fov,torch.from_numpy(eye),torch.from_numpy(head_for_mask),gaze_heatmap, image_path
 
 

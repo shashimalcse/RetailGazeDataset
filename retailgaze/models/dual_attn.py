@@ -659,7 +659,7 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
 
         running_loss = []
         validation_loss = []
-        for i, (img, face, head_channel,object_channel,fov,eye,gaze_heatmap, image_path) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
+        for i, (img, face, head_channel,object_channel,fov, eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
             image =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
@@ -678,10 +678,9 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
             running_loss.append(loss.item())
             if i % 10 == 9:
                 logger.info('%s'%(str(np.mean(running_loss))))
-                writer.add_scalar('training_loss',np.mean(running_loss),epoch*n_total_steps+i)
                 running_loss = [] 
         model.eval() 
-        for i, (img, face, head_channel,object_channel,fov,eye,gaze_heatmap, image_path) in tqdm(enumerate(validation_data_loader), total=len(train_data_loader)) :
+        for i, (img, face, head_channel,object_channel,fov, eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(validation_data_loader), total=len(train_data_loader)) :
             image =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
@@ -697,7 +696,6 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
             validation_loss.append(loss.item())
         val_loss = np.mean(validation_loss)
         logger.info('%s'%(str(val_loss)))
-        writer.add_scalar('validation_loss',val_loss,epoch)
         validation_loss = []
         early_stopping(val_loss, model, optimizer, epoch, logger)  
         if early_stopping.early_stop:
