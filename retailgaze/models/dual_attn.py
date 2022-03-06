@@ -608,9 +608,9 @@ class Shashimal6_New(nn.Module):
                 fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/24
                 head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
             point_depth = torch.zeros(image.shape[0],1).cuda()
-        gaze[:,2] = self.linear(gaze[:,2])
+        d = self.linear(gaze[:,2].unsqueeze(0))
         for batch in range(image.shape[0]):
-            point_depth[batch,:] = head_depth[batch] + gaze[batch,2]*224   
+            point_depth[batch,:] = head_depth[batch] + d[batch]*224   
         fd_0 = torch.zeros(image.shape[0],1,224,224).cuda()
         fd_1 = torch.zeros(image.shape[0],1,224,224).cuda()
         fd_2 = torch.zeros(image.shape[0],1,224,224).cuda()
@@ -663,7 +663,7 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
             image =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
-            head_point = eye.cuda()
+            head_point = head_for_mask.cuda()
             fov = fov.cuda()
             gaze_heatmap = gaze_heatmap.cuda()
             heatmap = model(image,face,object_channel,head_point,fov)
@@ -684,7 +684,7 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
             image =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
-            head_point = eye.cuda()
+            head_point = head_for_mask.cuda()
             fov = fov.cuda()
             gaze_heatmap = gaze_heatmap.cuda().to(torch.float)
             heatmap = model(image,face,object_channel,head_point,fov)
