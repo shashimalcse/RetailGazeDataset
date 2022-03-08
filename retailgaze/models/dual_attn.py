@@ -608,7 +608,7 @@ class Shashimal6_New(nn.Module):
                 fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/24
                 head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
             point_depth = torch.zeros(image.shape[0],1).cuda()
-        d = self.linear(gaze[:,2].unsqueeze(0))
+        d = self.linear(gaze[:,2].unsqueeze(1))
         for batch in range(image.shape[0]):
             point_depth[batch,:] = head_depth[batch] + d[batch]*224   
         fd_0 = torch.zeros(image.shape[0],1,224,224).cuda()
