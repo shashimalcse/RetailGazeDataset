@@ -79,7 +79,7 @@ class RetailGaze(Dataset):
 
             gaze = [float(data['gaze_cx'])/640, float(data['gaze_cy'])/480]
             gaze_x, gaze_y = gaze
-
+            gt_l = np.array([gaze_x, gaze_y])
             image_path = image_path.replace('\\', '/')
             img = Image.open(image_path)
             img = img.convert('RGB')
@@ -133,7 +133,7 @@ class RetailGaze(Dataset):
 
 
             if self.training == 'test':
-                return img, face, head_channel,object_channel,fov, torch.from_numpy(eye),torch.from_numpy(head_for_mask),gaze_heatmap, image_path
+                return img, face, head_channel,object_channel,fov, torch.from_numpy(eye),torch.from_numpy(head_for_mask),torch.from_numpy(gt_l),gaze_heatmap, image_path
             else:
                 return img, face, head_channel,object_channel,fov,torch.from_numpy(eye),torch.from_numpy(head_for_mask),gaze_heatmap, image_path
 
