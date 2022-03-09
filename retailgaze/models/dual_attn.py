@@ -593,7 +593,7 @@ class Shashimal6_New(nn.Module):
         self.face_net.cuda()
         self.face_net.load_state_dict(statedict["state_dict"])
         self.sigmoid = nn.Sigmoid()    
-        self.linear = nn.Linear(1,1)
+        self.linear = nn.Linear(3,3)
         self.linear.weight.data.fill_(1)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -608,9 +608,11 @@ class Shashimal6_New(nn.Module):
                 fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/24
                 head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
             point_depth = torch.zeros(image.shape[0],1).cuda()
-        d = self.linear(gaze[:,2].unsqueeze(1))
+        print(head_point.shape)
+        print(gaze.shape)
+        gaze = self.linear(gaze) 
         for batch in range(image.shape[0]):
-            point_depth[batch,:] = head_depth[batch] + d[batch]*224   
+            point_depth[batch,:] = head_depth[batch] + gaze[batch,2]*224    
         fd_0 = torch.zeros(image.shape[0],1,224,224).cuda()
         fd_1 = torch.zeros(image.shape[0],1,224,224).cuda()
         fd_2 = torch.zeros(image.shape[0],1,224,224).cuda()
