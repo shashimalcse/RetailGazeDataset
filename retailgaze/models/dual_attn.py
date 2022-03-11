@@ -608,8 +608,6 @@ class Shashimal6_New(nn.Module):
                 fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/24
                 head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
             point_depth = torch.zeros(image.shape[0],1).cuda()
-        print(head_point.shape)
-        print(gaze.shape)
         gaze = self.linear(gaze) 
         for batch in range(image.shape[0]):
             point_depth[batch,:] = head_depth[batch] + gaze[batch,2]*224    
@@ -709,23 +707,23 @@ def test_new(model,test_data_loader,logger):
     model.eval()
     total_error = []
     with torch.no_grad():
-        for i, (img, face, location_channel,object_channel,head_channel,head,gt_label,gaze_heatmap,mask) in tqdm(enumerate(test_data_loader), total=len(test_data_loader)):
+        for img, face, head_channel,object_channel,fov, eye,head_for_mask,gt_label,gaze_heatmap, image_path in test_data_loader:
             image =  img.cuda()
             face = face.cuda()
             object_channel = object_channel.cuda()
-            head_point = head.cuda()
-            mask = mask.cuda()
+            head_point = head_for_mask.cuda()
+            fov = fov.cuda()
             gaze_heatmap = gaze_heatmap.cuda()
-            heatmap = model(image,face,object_channel,head_point,mask)
+            heatmap = model(image,face,object_channel,head_point,fov)
             heatmap = heatmap.squeeze(1) 
             heatmap = heatmap.cpu().data.numpy()
             gaze_heatmap = gaze_heatmap.cpu().data.numpy()
             gt_label = gt_label.cpu().data.numpy()
-            head = head.cpu().data.numpy()
+            head = head_for_mask.cpu().data.numpy()
             for batch in range(img.shape[0]):
                 output = heatmap[batch]
                 target = gaze_heatmap[batch]
-                gt = gt_label[batch]/[224,224]
+                gt = gt_label[batch]
                 head_position = head[batch]/[224,224]
                 h_index, w_index = np.unravel_index(output.argmax(), output.shape)
                 f_point = np.array([w_index / 64, h_index / 64])
