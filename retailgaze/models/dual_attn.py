@@ -726,9 +726,9 @@ class Shashimal6_New2(nn.Module):
         return x
 
 
-def train_new(model,train_data_loader,validation_data_loader, criterion, optimizer, logger, writer ,num_epochs=5,patience=10):
+def train_new(model,train_data_loader,validation_data_loader, path, optimizer, logger, writer ,num_epochs=5,patience=10):
     mse_loss = nn.MSELoss(reduce=False)
-    early_stopping = EarlyStopping(patience=patience, verbose=True)
+    early_stopping = EarlyStopping(patience=patience, verbose=True,path=path)
     for epoch in range(num_epochs):
 
         model.train()  # Set model to training mode
@@ -782,9 +782,9 @@ def train_new(model,train_data_loader,validation_data_loader, criterion, optimiz
             print("Early stopping")
             break 
 
-def train_new_goo(model,train_data_loader,validation_data_loader, criterion, optimizer, logger, writer ,num_epochs=5,patience=10):
+def train_new_goo(model,train_data_loader,validation_data_loader, path, optimizer, logger, writer ,num_epochs=5,patience=10):
     mse_loss = nn.MSELoss(reduce=False)
-    early_stopping = EarlyStopping(patience=patience, verbose=True)
+    early_stopping = EarlyStopping(patience=patience, verbose=True,path=path)
     for epoch in range(num_epochs):
 
         model.train()  # Set model to training mode
