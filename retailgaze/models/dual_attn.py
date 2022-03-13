@@ -813,7 +813,7 @@ def train_new_goo(model,train_data_loader,validation_data_loader, path, optimize
             if i % 30 == 9:
                 logger.info('%s'%(str(np.mean(running_loss))))
                 running_loss = [] 
-        wandb.log({"loss": np.mean(running_loss2)})
+        wandb.log({"train_loss": np.mean(running_loss2)})
         model.eval() 
         for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap,mask) in tqdm(enumerate(validation_data_loader), total=len(validation_data_loader)) :
             image =  img.cuda()
@@ -831,7 +831,7 @@ def train_new_goo(model,train_data_loader,validation_data_loader, path, optimize
             validation_loss.append(loss.item())
         val_loss = np.mean(validation_loss)
         logger.info('%s'%(str(val_loss)))
-        wandb.log({"loss": val_loss})
+        wandb.log({"val_loss": val_loss})
         validation_loss = []
         early_stopping(val_loss, model, optimizer, epoch, logger)  
         if early_stopping.early_stop:
