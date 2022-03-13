@@ -137,6 +137,7 @@ def train_face3d_distill(student_model,teacher_model,train_data_loader,validatio
                 label[i, 2] = (gt_depth - head_depth)
             label = torch.tensor(label, dtype=torch.float)
             gaze = gaze.cpu()
+            gaze_t = gaze_t.cpu()
             student_loss = criterion(gaze, label)
             ditillation_loss = divergence_loss_fn(F.softmax(gaze, dim=1),F.softmax(gaze_t, dim=1))
             loss = alpha * student_loss + (1 - alpha) * ditillation_loss
