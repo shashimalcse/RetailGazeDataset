@@ -70,7 +70,7 @@ class Shashimal6_Face3D(nn.Module):
 class Shashimal6_Face3D_Student(nn.Module):
     def __init__(self):
         super(Shashimal6_Face3D_Student,self).__init__()
-        self.depth = torch.hub.load("intel-isl/MiDaS", "DPT_Small")
+        self.depth = torch.hub.load("intel-isl/MiDaS", "MiDaS_small")
         self.img_feature_dim = 256  # the dimension of the CNN feature to represent each frame
 
         self.base_model = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
