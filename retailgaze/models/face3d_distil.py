@@ -74,8 +74,7 @@ class Shashimal6_Face3D_Student(nn.Module):
         self.img_feature_dim = 256  # the dimension of the CNN feature to represent each frame
 
         self.base_model = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
-
-        self.base_model.fc2 = nn.Linear(1000, self.img_feature_dim)
+        self.base_model.classifier[1] = torch.nn.Linear(in_features=self.base_model.classifier[1].in_features, out_features=self.img_feature_dim)
         # The linear layer that maps the LSTM with the 3 outputs
         self.last_layer = nn.Linear(self.img_feature_dim, 3)   
     def forward(self,image,face):
@@ -84,7 +83,6 @@ class Shashimal6_Face3D_Student(nn.Module):
             id = self.depth(image)
             id = torch.nn.functional.interpolate(id.unsqueeze(1),size=image.shape[2:],mode="bicubic",align_corners=False,)
         base_out = self.base_model(face)
-        base_out = torch.flatten(base_out, start_dim=1)
         output = self.last_layer(base_out)
         return output,id
 
