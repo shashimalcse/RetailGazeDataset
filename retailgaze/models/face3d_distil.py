@@ -97,8 +97,8 @@ def get_bb_binary(box):
     return b
 
 
-def train_face3d_distill(student_model,teacher_model,train_data_loader,validation_data_loader, criterion, optimizer, logger, writer ,num_epochs=5,patience=10):
-    early_stopping = EarlyStopping(patience=patience, verbose=True)
+def train_face3d_distill(student_model,teacher_model,train_data_loader,validation_data_loader, criterion, optimizer, logger, path ,num_epochs=5,patience=10):
+    early_stopping = EarlyStopping(patience=patience, verbose=True,path=path)
     divergence_loss_fn = nn.KLDivLoss(reduction="batchmean")
     alpha=0.3
     for epoch in range(num_epochs):
