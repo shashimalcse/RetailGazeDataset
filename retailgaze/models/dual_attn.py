@@ -392,7 +392,6 @@ class Shashimal6_Face3D(nn.Module):
         output = self.last_layer(base_out)
         return output,id
 
-
 def get_bb_binary(box):
     xmin, ymin, xmax, ymax = box
     b = np.zeros((224, 224), dtype='float32')
@@ -403,15 +402,13 @@ def get_bb_binary(box):
 
 
 def train_face3d(model,train_data_loader,validation_data_loader, criterion, optimizer, logger, writer ,num_epochs=5,patience=10):
-    since = time.time()
-    n_total_steps = len(train_data_loader)
-    n_total_steps_val = len(validation_data_loader)
     early_stopping = EarlyStopping(patience=patience, verbose=True)
     for epoch in range(num_epochs):
 
         model.train()  # Set model to training mode
 
         running_loss = []
+        running_loss2 = []
         validation_loss = []
         for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap, head_box, gtbox) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
             image =  img.cuda()
@@ -439,20 +436,17 @@ def train_face3d(model,train_data_loader,validation_data_loader, criterion, opti
                 head_depth = torch.sum(hbox_depth) / torch.sum(hbox_binary==1)
                 gt_depth = torch.sum(gtbox_depth) / torch.sum(gtbox_binary==1)
                 label[i, 2] = (gt_depth - head_depth)
-                # label[i,2] = (depth[i,:,gt_label[i,0],gt_label[i,1]] - depth[i,:,head[i,0],head[i,1]])
             label = torch.tensor(label, dtype=torch.float)
             gaze = gaze.cpu()
             loss = criterion(gaze, label)
             loss.backward()
             optimizer.step()
             running_loss.append(loss.item())
-
+            running_loss2.append(loss.item())
             if i % 10 == 9:
                 logger.info('%s'%(str(np.mean(running_loss))))
-                # writer.add_scalar('training_loss',np.mean(running_loss),epoch*n_total_steps+i)
                 running_loss = []
-
-
+        wandb.log({"train_loss": np.mean(running_loss2)})
          # Validation
         model.eval()
         for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap, head_box, gtbox) in tqdm(enumerate(validation_data_loader), total=len(validation_data_loader)) :
@@ -481,17 +475,14 @@ def train_face3d(model,train_data_loader,validation_data_loader, criterion, opti
                 head_depth = torch.sum(hbox_depth) / torch.sum(hbox_binary == 1)
                 gt_depth = torch.sum(gtbox_depth) / torch.sum(gtbox_binary == 1)
                 label[i, 2] = (gt_depth - head_depth)
-                label[i,2] = (depth[i,:,gt_label[i,0],gt_label[i,1]] - depth[i,:,head[i,0],head[i,1]])
             label = torch.tensor(label, dtype=torch.float)
             gaze = gaze.cpu()
             loss = criterion(gaze, label)
             validation_loss.append(loss.item())
         val_loss = np.mean(validation_loss)
-
         logger.info('%s'%(str(val_loss)))
-        writer.add_scalar('validation_loss',val_loss,epoch)
+        wandb.log({"val_loss": val_loss})
         validation_loss = []
-
         early_stopping(val_loss, model, optimizer, epoch, logger)
         if early_stopping.early_stop:
             print("Early stopping")
@@ -652,79 +643,6 @@ class Shashimal6_New(nn.Module):
         return x
 
 
-class Shashimal6_New2(nn.Module):
-    def __init__(self):
-        super(Shashimal6_New2,self).__init__()
-        self.compress_conv1 = nn.Conv2d(515, 256, kernel_size=1, stride=1, padding=0, bias=False)
-        self.compress_bn1 = nn.BatchNorm2d(256)
-
-        self.deconv2 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2)
-        self.deconv_bn2 = nn.BatchNorm2d(128)
-        self.deconv3 = nn.ConvTranspose2d(128, 1, kernel_size=4, stride=2)
-        self.deconv_bn3 = nn.BatchNorm2d(1)
-        self.conv4 = nn.Conv2d(1, 1, kernel_size=1, stride=1)
-        for m in self.modules():
-            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
-                m.weight.data.normal_(0, math.sqrt(2. / n))
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-        resnet =  resnet50(pretrained=True)
-        self.scene_net = torch.nn.Sequential(*(list(resnet.children())[:-5]))
-        self.depth = torch.hub.load("intel-isl/MiDaS", "DPT_Hybrid")
-        self.face_net = Shashimal6_Face3D()
-        statedict = torch.load("/content/drive/MyDrive/shashimal6_face_51.pt")
-        self.face_net.cuda()
-        self.face_net.load_state_dict(statedict["state_dict"])
-        self.sigmoid = nn.Sigmoid()    
-        self.linear = nn.Linear(3,3)
-        self.linear.weight.data.fill_(1)
-        self.relu = nn.ReLU(inplace=True)
-        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
-    def forward(self,image,face,object_channel,head_point,mask):
-        self.face_net.eval()
-        with torch.no_grad():
-            gaze,depth= self.face_net(image,face)
-            fd_range = torch.zeros(image.shape[0],1).cuda()
-            head_depth = torch.zeros(image.shape[0],1).cuda()
-            for batch in range(image.shape[0]):
-                fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/12 
-                head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
-            point_depth = torch.zeros(image.shape[0],1).cuda()
-        gaze = self.linear(gaze) 
-        for batch in range(image.shape[0]):
-            point_depth[batch,:] = head_depth[batch] + gaze[batch,2]*224    
-        fd_0 = torch.zeros(image.shape[0],1,224,224).cuda()
-        fd_1 = torch.zeros(image.shape[0],1,224,224).cuda()
-        fd_2 = torch.zeros(image.shape[0],1,224,224).cuda()
-        for batch in range(image.shape[0]):
-            fd_0[batch,:,:,:] = torch.where((point_depth[batch]-fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
-            fd_1[batch,:,:,:] = torch.where((point_depth[batch]-2*fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+2*fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
-            fd_2[batch,:,:,:] = torch.where((point_depth[batch]-3*fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+3*fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
-        x_0 = torch.mul(fd_0,mask)
-        x_1 = torch.mul(fd_1,mask)
-        x_2 = torch.mul(fd_2,mask)
-        depth_mask_0 = torch.mul(x_0,object_channel)
-        depth_mask_1 = torch.mul(x_1,object_channel)
-        depth_mask_2 = torch.mul(x_2,object_channel)
-        depth_mask = torch.cat([depth_mask_0,depth_mask_1,depth_mask_2], dim=1)   
-        scene = self.scene_net(image)
-        reduce_depth_mask = self.maxpool(self.maxpool(self.maxpool(depth_mask)))
-        scene_depth_feat = torch.cat([scene,reduce_depth_mask],1)
-        encoding = self.compress_conv1(scene_depth_feat)
-        encoding = self.compress_bn1(encoding)
-        encoding = self.relu(encoding)
-
-        x = self.deconv2(encoding)
-        x = self.deconv_bn2(x)
-        x = self.relu(x)
-        x = self.deconv3(x)
-        x = self.deconv_bn3(x)
-        x = self.relu(x)
-        x = self.conv4(x)
-        return x
-
 
 def train_new(model,train_data_loader,validation_data_loader, path, optimizer, logger, writer ,num_epochs=5,patience=10):
     mse_loss = nn.MSELoss(reduce=False)
@@ -757,7 +675,7 @@ def train_new(model,train_data_loader,validation_data_loader, path, optimizer, l
             if i % 30 == 9:
                 logger.info('%s'%(str(np.mean(running_loss))))
                 running_loss = [] 
-        wandb.log({"loss": np.mean(running_loss2)})
+        wandb.log({"train_loss": np.mean(running_loss2)})
         model.eval() 
         for i, (img, face, head_channel,object_channel,fov, eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(validation_data_loader), total=len(validation_data_loader)) :
             image =  img.cuda()
@@ -775,7 +693,7 @@ def train_new(model,train_data_loader,validation_data_loader, path, optimizer, l
             validation_loss.append(loss.item())
         val_loss = np.mean(validation_loss)
         logger.info('%s'%(str(val_loss)))
-        wandb.log({"loss": val_loss})
+        wandb.log({"val_loss": val_loss})
         validation_loss = []
         early_stopping(val_loss, model, optimizer, epoch, logger)  
         if early_stopping.early_stop:
