@@ -149,7 +149,7 @@ def train_face3d_distill(student_model,teacher_model,train_data_loader,validatio
             if i % 10 == 9:
                 logger.info('%s'%(str(np.mean(running_loss))))
                 running_loss = []
-        wandb.log({"train_loss": np.mean(running_loss2)})
+        wandb.log({"dil_train_loss": np.mean(running_loss2)})
         wandb.log({"student_train_loss": np.mean(student_losses)})
         student_model.eval()
         for i, (img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap, head_box, gtbox) in tqdm(enumerate(validation_data_loader), total=len(validation_data_loader)) :
@@ -184,7 +184,7 @@ def train_face3d_distill(student_model,teacher_model,train_data_loader,validatio
             validation_loss.append(loss.item())
         val_loss = np.mean(validation_loss)
         logger.info('%s'%(str(val_loss)))
-        wandb.log({"student_train_loss": val_loss})
+        wandb.log({"student_val_loss": val_loss})
         validation_loss = []
         early_stopping(val_loss, student_model, optimizer, epoch, logger)
         if early_stopping.early_stop:
