@@ -194,7 +194,7 @@ def train_face3d_distill(student_model,teacher_model,train_data_loader,validatio
     return student_model
 
 
-def train_face3d(model,train_data_loader,validation_data_loader, criterion, optimizer, logger, writer ,num_epochs=5,patience=10):
+def train_face3d(model,train_data_loader,validation_data_loader, criterion, optimizer, logger, path ,num_epochs=5,patience=10):
     early_stopping = EarlyStopping(patience=patience, verbose=True)
     for epoch in range(num_epochs):
 
@@ -288,7 +288,7 @@ def test_face3d(model, test_data_loader, logger, save_output=False):
     model.eval()
     angle_error = []
     with torch.no_grad():
-        for img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap in test_data_loader:
+        for img, face, location_channel,object_channel,head_channel ,head,gt_label,gaze_heatmap, head_box, gtbox in test_data_loader:
             image =  img.cuda()
             face = face.cuda()
             gaze,depth = model(image,face)

@@ -24,6 +24,7 @@ from early_stopping_pytorch.pytorchtools import EarlyStopping
 from models.resnet import resnet18
 from models.resnet import resnet50
 import models.resnet_fpn as resnet_fpn
+from models.face3d_distil import Shashimal6_Face3D_Student
 
 import wandb
 
@@ -642,7 +643,89 @@ class Shashimal6_New(nn.Module):
         x = self.conv4(x)
         return x
 
+class Shashimal6_New_Student(nn.Module):
+    def __init__(self):
+        super(Shashimal6_New_Student,self).__init__()
+        self.compress_conv1 = nn.Conv2d(1283, 1024, kernel_size=1, stride=1, padding=0, bias=False)
+        self.compress_bn1 = nn.BatchNorm2d(1024)
+        self.compress_conv2 = nn.Conv2d(1024, 512, kernel_size=1, stride=1, padding=0, bias=False)
+        self.compress_bn2 = nn.BatchNorm2d(512)
 
+        # decoding
+        self.deconv1 = nn.ConvTranspose2d(512, 256, kernel_size=3, stride=2)
+        self.deconv_bn1 = nn.BatchNorm2d(256)
+        self.deconv2 = nn.ConvTranspose2d(256, 128, kernel_size=3, stride=2)
+        self.deconv_bn2 = nn.BatchNorm2d(128)
+        self.deconv3 = nn.ConvTranspose2d(128, 1, kernel_size=4, stride=2)
+        self.deconv_bn3 = nn.BatchNorm2d(1)
+        self.conv4 = nn.Conv2d(1, 1, kernel_size=1, stride=1)
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
+                n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                m.weight.data.normal_(0, math.sqrt(2. / n))
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1)
+                m.bias.data.zero_()
+        base_model =  torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
+        base_model.classifier[1] = torch.nn.Linear(in_features=base_model.classifier[1].in_features, out_features=256)
+        self.scene_net = torch.nn.Sequential(*(list(base_model.children())[:-1]))
+        self.face_net = Shashimal6_Face3D_Student()
+        statedict = torch.load("/content/drive/MyDrive/shashimal6_face_21.pt")
+        self.face_net.cuda()
+        self.face_net.load_state_dict(statedict["state_dict"])
+        self.sigmoid = nn.Sigmoid()    
+        self.linear = nn.Linear(3,3)
+        self.linear.weight.data.fill_(1)
+        self.relu = nn.ReLU(inplace=True)
+        self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
+    def forward(self,image,face,object_channel,head_point,mask):
+        self.face_net.eval()
+        with torch.no_grad():
+            gaze,depth= self.face_net(image,face)
+            fd_range = torch.zeros(image.shape[0],1).cuda()
+            head_depth = torch.zeros(image.shape[0],1).cuda()
+            for batch in range(image.shape[0]):
+                fd_range[batch,:] = (torch.max(depth[batch]) - torch.min(depth[batch]))/12 
+                head_depth[batch,:] = depth[batch,:,head_point[batch,0],head_point[batch,1]]
+            point_depth = torch.zeros(image.shape[0],1).cuda()
+        gaze = self.linear(gaze) 
+        for batch in range(image.shape[0]):
+            point_depth[batch,:] = head_depth[batch] + gaze[batch,2]*224    
+        fd_0 = torch.zeros(image.shape[0],1,224,224).cuda()
+        fd_1 = torch.zeros(image.shape[0],1,224,224).cuda()
+        fd_2 = torch.zeros(image.shape[0],1,224,224).cuda()
+        for batch in range(image.shape[0]):
+            fd_0[batch,:,:,:] = torch.where((point_depth[batch]-fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
+            fd_1[batch,:,:,:] = torch.where((point_depth[batch]-2*fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+2*fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
+            fd_2[batch,:,:,:] = torch.where((point_depth[batch]-3*fd_range[batch]<=depth[batch,:,:,:]) & (point_depth[batch]+3*fd_range[batch]>=depth[batch,:,:,:]),depth[batch,:,:,:],torch.tensor(0,dtype=torch.float).cuda())
+        x_0 = torch.mul(fd_0,mask)
+        x_1 = torch.mul(fd_1,mask)
+        x_2 = torch.mul(fd_2,mask)
+        depth_mask_0 = torch.mul(x_0,object_channel)
+        depth_mask_1 = torch.mul(x_1,object_channel)
+        depth_mask_2 = torch.mul(x_2,object_channel)
+        depth_mask = torch.cat([depth_mask_0,depth_mask_1,depth_mask_2], dim=1)   
+        scene = self.scene_net(image)
+        reduce_depth_mask = self.maxpool(self.maxpool(self.maxpool(self.maxpool(self.maxpool(depth_mask)))))
+        scene_depth_feat = torch.cat([scene,reduce_depth_mask],1)
+        encoding = self.compress_conv1(scene_depth_feat)
+        encoding = self.compress_bn1(encoding)
+        encoding = self.relu(encoding)
+        encoding = self.compress_conv2(encoding)
+        encoding = self.compress_bn2(encoding)
+        encoding = self.relu(encoding)
+
+        x = self.deconv1(encoding)
+        x = self.deconv_bn1(x)
+        x = self.relu(x)
+        x = self.deconv2(x)
+        x = self.deconv_bn2(x)
+        x = self.relu(x)
+        x = self.deconv3(x)
+        x = self.deconv_bn3(x)
+        x = self.relu(x)
+        x = self.conv4(x)
+        return x
 
 def train_new(model,train_data_loader,validation_data_loader, path, optimizer, logger, writer ,num_epochs=5,patience=10):
     mse_loss = nn.MSELoss(reduce=False)
@@ -696,6 +779,73 @@ def train_new(model,train_data_loader,validation_data_loader, path, optimizer, l
         wandb.log({"val_loss": val_loss})
         validation_loss = []
         early_stopping(val_loss, model, optimizer, epoch, logger)  
+        if early_stopping.early_stop:
+            print("Early stopping")
+            break 
+
+def train_new_distill(student_model,teacher_model,train_data_loader,validation_data_loader, path, optimizer, logger, writer ,num_epochs=5,patience=10):
+    mse_loss = nn.MSELoss(reduce=False)
+    divergence_loss_fn = nn.KLDivLoss(reduction="batchmean")
+    early_stopping = EarlyStopping(patience=patience, verbose=True,path=path)
+    alpha=0.3
+    temperature=3
+    for epoch in range(num_epochs):
+
+        student_model.train()  # Set model to training mode
+        teacher_model.eval() 
+        running_loss = []
+        running_loss2 = []
+        student_losses = []
+        validation_loss = []
+        for i, (img, face, head_channel,object_channel,fov, eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(train_data_loader), total=len(train_data_loader)) :
+            optimizer.zero_grad()
+            image =  img.cuda()
+            face = face.cuda()
+            object_channel = object_channel.cuda()
+            head_point = head_for_mask.cuda()
+            fov = fov.cuda()
+            gaze_heatmap = gaze_heatmap.cuda()
+            with torch.no_grad():
+                heatmap_t = teacher_model(image,face,object_channel,head_point,fov)
+            heatmap = student_model(image,face,object_channel,head_point,fov)
+            heatmap = heatmap.squeeze(1)
+            heatmap_t = heatmap_t.squeeze(1)
+            student_loss = mse_loss(heatmap,gaze_heatmap)
+            student_loss = torch.mean(student_loss, dim=1)
+            student_loss = torch.mean(student_loss, dim=1)
+            student_loss = torch.sum(student_loss)
+            ditillation_loss = divergence_loss_fn(F.softmax(heatmap/temperature, dim=1),F.softmax(heatmap_t/temperature, dim=1))
+            loss = alpha * student_loss + (1 - alpha) * ditillation_loss
+            loss.backward()
+            optimizer.step()
+            running_loss.append(loss.item())
+            running_loss2.append(loss.item())
+            student_losses.append(student_loss.item())
+            if i % 30 == 9:
+                logger.info('%s'%(str(np.mean(running_loss))))
+                running_loss = [] 
+        wandb.log({"dil_train_loss": np.mean(running_loss2)})
+        wandb.log({"student_train_loss": np.mean(student_losses)})
+        student_model.eval() 
+        for i, (img, face, head_channel,object_channel,fov, eye,head_for_mask,gaze_heatmap, image_path) in tqdm(enumerate(validation_data_loader), total=len(validation_data_loader)) :
+            image =  img.cuda()
+            face = face.cuda()
+            object_channel = object_channel.cuda()
+            head_point = head_for_mask.cuda()
+            fov = fov.cuda()
+            gaze_heatmap = gaze_heatmap.cuda().to(torch.float)
+            heatmap = student_model(image,face,object_channel,head_point,fov)
+            heatmap = heatmap.squeeze(1)
+            loss = mse_loss(heatmap,gaze_heatmap)
+            loss = torch.mean(loss, dim=1)
+            loss = torch.mean(loss, dim=1)
+            loss = torch.sum(loss)
+            validation_loss.append(loss.item())
+        val_loss = np.mean(validation_loss)
+        logger.info('%s'%(str(val_loss)))
+        wandb.log({"student_val_loss": val_loss})
+        validation_loss = []
+        early_stopping(val_loss, student_model, optimizer, epoch, logger)  
         if early_stopping.early_stop:
             print("Early stopping")
             break 
